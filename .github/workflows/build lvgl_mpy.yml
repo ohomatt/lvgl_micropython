@@ -27,9 +27,9 @@ jobs:
             flash_size: 4
             display: st7789
             indev: ""
-          - board: RPI_PICO
-            variant: SPIRAM_OCT
-            flash_size: 16
+          - board: ESP32_GENERIC_C3
+            variant: ""
+            flash_size: 4
             display: st7789
             indev: ""
 
