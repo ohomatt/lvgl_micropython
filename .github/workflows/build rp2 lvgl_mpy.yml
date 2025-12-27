@@ -6,7 +6,7 @@ on:
   workflow_dispatch:  # 仅手动触发
 
 jobs:
-  build_esp32:
+  build_rp2:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -96,14 +96,15 @@ jobs:
     - name: 8.使用 make.py 编译指定板型/Flash/显示/触摸配置
       run: |
         # 组装 make.py 参数数组
-        opts=()
-        [[ -n "${{ matrix.variant }}" ]] && opts+=("BOARD_VARIANT=${{ matrix.variant }}")
-        opts+=("BOARD=${{ matrix.board }}")
-        opts+=("--flash-size=${{ matrix.flash_size }}")
-        opts+=("DISPLAY=${{ matrix.display }}")
-        [[ -n "${{ matrix.indev }}" ]] && opts+=("INDEV=${{ matrix.indev }}")
+        # opts=()
+        # [[ -n "${{ matrix.variant }}" ]] && opts+=("BOARD_VARIANT=${{ matrix.variant }}")
+        # opts+=("BOARD=${{ matrix.board }}")
+        # opts+=("--flash-size=${{ matrix.flash_size }}")
+        # opts+=("DISPLAY=${{ matrix.display }}")
+        # [[ -n "${{ matrix.indev }}" ]] && opts+=("INDEV=${{ matrix.indev }}")
         # 调用 make.py 进行编译
-        python3 make.py rp2 "${opts[@]}"
+        # python3 make.py rp2 "${opts[@]}"
+        Python3 make.py rp2 BOARD=RPI_PICO DISPLAY=st7789
 
     # 9. 收集固件到统一目录
     - name: 9.重命名并收集所有固件到 ~/artifacts
