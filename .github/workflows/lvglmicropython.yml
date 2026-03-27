@@ -1,0 +1,75 @@
+name: Build LVGL MicroPython ESP32-C3
+
+on:
+  workflow_dispatch: # 允许在 GitHub Actions 页面手动触发构建
+  push:
+    paths:
+      - '.github/workflows/build_firmware.yml' # 当修改此工作流文件时自动触发
+
+jobs:
+  build-esp32c3:
+    name: Build ESP32-C3 Firmware
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 1. Checkout Repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # 获取完整历史以确保可以切换到特定 tag
+
+    - name: 2. Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11' # 作者 release.yml 中使用的推荐 Python 版本
+
+    - name: 3. Initialize Submodules (pycparser, micropython, lvgl)
+      run: |
+        git submodule update --init --depth 1 -- lib/pycparser
+        git submodule update --init --jobs 4 -- lib/micropython        
+        git submodule update --init --jobs 4 -- lib/lvgl
+
+    - name: 4. Checkout Specific Versions (MPy v1.25.0 & LVGL v9.3.0)
+      run: |
+        # 切换 MicroPython 到 v1.25.0
+        cd lib/micropython
+        git fetch --tags
+        git checkout v1.25.0
+        cd ../..
+        
+        # 切换 LVGL 到 v9.3.0 (v9.3 对应的 tag 通常为 v9.3.0)
+        cd lib/lvgl
+        git fetch --tags
+        git checkout v9.3.0
+        cd ../..
+
+    - name: 5. Get Build Dependencies & Install ESP-IDF
+      run: |
+        git submodule update --init --depth 1 --jobs 4 -- lib/esp-idf
+        cd lib/esp-idf
+        # 仅拉取 ESP32 相关的必要组件，减少不必要的下载
+        git submodule update --init --depth 1 --jobs 4 -- components/bt/host/nimble/nimble components/esp_wifi components/esptool_py/esptool components/lwip/lwip components/mbedtls/mbedtls components/bt/controller/lib_esp32 components/bt/controller/lib_esp32c3_family
+        cd ../..
+        
+        # 运行 ESP-IDF 安装脚本
+        export "IDF_PATH=${GITHUB_WORKSPACE}/lib/esp-idf"
+        ./lib/esp-idf/install.sh all
+
+    - name: 6. Build Firmware for ESP32-C3
+      run: |
+        # 导出 ESP-IDF 环境变量
+        export "IDF_PATH=${GITHUB_WORKSPACE}/lib/esp-idf"
+        . ./lib/esp-idf/export.sh
+        
+        # 执行作者的 make.py 脚本
+        # 目标: esp32
+        # 板子: ESP32_GENERIC_C3 (根据 README 中的支持列表)
+        # Flash 大小: 4MB
+        # 包含所有驱动 (DISPLAY, INDEV, EXPANDER)
+        python3 make.py esp32 BOARD=ESP32_GENERIC_C3 --flash-size=4 DISPLAY=all INDEV=all EXPANDER=all --no-scrub
+
+    - name: 7. Upload Firmware to Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: esp32c3-4mb-lvgl9.3-mpy1.25.0-firmware
+        path: build/ # 将整个 build 目录打包上传
+        if-no-files-found: error
